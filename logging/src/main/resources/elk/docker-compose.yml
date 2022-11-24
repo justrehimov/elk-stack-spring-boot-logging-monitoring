@@ -1,0 +1,57 @@
+version: '3.7'
+
+services:
+  elasticsearch:
+    image: elasticsearch:8.5.1
+    container_name: elastic_spring
+    environment:
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+      - "discovery.type=single-node"
+      - xpack.security.enabled=false
+    ports:
+      - "9200:9200"
+    volumes:
+      - elastic_data:/usr/share/elasticsearch/data
+    networks:
+      - elastic
+
+  kibana:
+    image: kibana:8.5.1
+    container_name: kibana_spring
+    ports:
+      - "5601:5601"
+    environment:
+      ELASTICSEARCH_URL: http://elasticsearch:9200
+      ELASTICSEARCH_HOSTS: '["http://elasticsearch:9200"]'
+    depends_on:
+      - elasticsearch
+    networks:
+      - elastic
+
+  logstash:
+    image: logstash:8.5.1
+    container_name: logstash_spring
+    volumes:
+      - ./logstash/config/logstash.yml:/usr/share/logstash/config/logstash.yml:ro
+      - ./logstash/pipeline:/usr/share/logstash/pipeline:ro
+    ports:
+      - "5044:5044"
+      - "5000:5000/tcp"
+      - "5000:5000/udp"
+      - "9600:9600"
+    environment:
+      LS_JAVA_OPTIONS: "-Xmx265m -Xms256m"
+    networks:
+      - elastic
+    depends_on:
+      - elasticsearch
+
+
+networks:
+  elastic:
+    driver: bridge
+
+volumes:
+  elastic_data:
+    driver: local
